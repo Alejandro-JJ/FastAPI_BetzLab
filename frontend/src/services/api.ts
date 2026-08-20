@@ -33,7 +33,7 @@ api.interceptors.request.use(
   }
 );
 
-// ==================== AUTHENTICATION ====================
+// Authentication requests and token handling.
 
 // Register a new user
 export const register = async (email: string, password: string) => {
@@ -72,7 +72,7 @@ export const getCurrentUser = async () => {
   return response.data;
 };
 
-// ==================== FILE UPLOAD ====================
+// File upload requests.
 
 // Upload a file
 export const uploadFile = async (file: File) => {
@@ -87,7 +87,7 @@ export const uploadFile = async (file: File) => {
   return response.data;
 };
 
-// ==================== SEGMENTATION ====================
+// Image processing requests and job status polling.
 
 // Run segmentation with custom parameters
 export const runSegmentation = async (fileId: number, params: Record<string, number>) => {
@@ -104,7 +104,7 @@ export const getJobStatus = async (jobId: string) => {
   return response.data;
 };
 
-// ==================== UTILITY ====================
+// Small helpers for storing and checking the access token.
 
 // Store token in localStorage
 export const saveToken = (token: string) => {

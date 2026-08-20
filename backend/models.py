@@ -11,9 +11,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from database import Base
 
-# ============================================
-# USER MODEL
-# ============================================
+# User accounts and their relationships to files and jobs.
 class User(Base):
     __tablename__ = "users"
     
@@ -27,9 +25,7 @@ class User(Base):
     jobs = relationship("Job", back_populates="user")
     files = relationship("File", back_populates="user")
 
-# ============================================
-# FILE MODEL
-# ============================================
+# Uploaded files and their owner.
 class File(Base):
     __tablename__ = "files"
     
@@ -40,9 +36,7 @@ class File(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     user = relationship("User", back_populates="files")
 
-# ============================================
-# JOB MODEL
-# ============================================
+# Background processing jobs and their results.
 class Job(Base):
     __tablename__ = "jobs"
     

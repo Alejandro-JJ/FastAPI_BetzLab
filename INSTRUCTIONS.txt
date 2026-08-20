@@ -1,5 +1,5 @@
 BeadBuddy app startup instructions
-=================================
+
 
 This project is organized as a modular stack:
 - PostgreSQL database

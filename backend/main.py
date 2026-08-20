@@ -188,7 +188,7 @@ async def get_job_status(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    # ✅ CHECK JOB EXISTS AND BELONGS TO USER
+    # Check that the job exists and belongs to the current user.
     db_job = db.query(Job).filter(Job.id == job_id).first()
     if not db_job or db_job.user_id != current_user.id:
         raise HTTPException(status_code=404, detail="Job not found")
@@ -197,7 +197,7 @@ async def get_job_status(
     task = celery_app.AsyncResult(job_id)
 
     if task.ready():
-        # ✅ UPDATE JOB STATUS IN DATABASE
+        # Store the completed result path in the database.
         db_job.status = "completed"
         db_job.result_path = task.result.get("result_path")
         db.commit()

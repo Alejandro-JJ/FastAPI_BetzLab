@@ -1,0 +1,165 @@
+BeadBuddy app startup instructions
+=================================
+
+This project is organized as a modular stack:
+- PostgreSQL database
+- Redis
+- FastAPI backend
+- Celery worker
+- React frontend
+
+
+1) Start the local services with Docker
+--------------------------------------
+From the project root:
+
+    cd /media/alejandro/Coding/MyGits/FastAPI_BB-main
+    docker compose up --build
+
+This will start:
+- database on localhost:5432
+- redis on localhost:6379
+- backend on localhost:8000
+- frontend on localhost:4173
+
+If you want to run it in the background:
+
+    docker compose up --build -d
+
+To stop it:
+
+    docker compose down
+
+To reset everything including database data:
+
+    docker compose down -v
+
+
+2) Check the backend manually
+-----------------------------
+Open the API docs in your browser:
+
+    http://localhost:8000/docs
+
+You can test endpoints there, especially:
+- POST /auth/register
+- POST /auth/login
+- GET /auth/me
+- POST /upload
+- GET /job/{job_id}
+
+Example login request via curl:
+
+    curl -X POST "http://localhost:8000/auth/login" \
+      -H "Content-Type: application/x-www-form-urlencoded" \
+      -d "username=your@email.com&password=yourpassword"
+
+
+3) Check the frontend in the browser
+------------------------------------
+Open:
+
+    http://localhost:4173
+
+The frontend should show the login/register screen.
+
+If you want to use a local frontend dev server instead of the Dockerized frontend:
+
+    cd /media/alejandro/Coding/MyGits/FastAPI_BB-main/frontend
+    npm install
+    npm run dev -- --host 0.0.0.0
+
+Then open:
+
+    http://localhost:5173
+
+
+4) Useful database and Redis checks
+-----------------------------------
+Check Redis:
+
+    redis-cli -p 6379 ping
+
+Expected output:
+
+    PONG
+
+Check Postgres from the terminal:
+
+    docker exec -it beadbuddy-db psql -U postgres -d beadbuddy
+
+Then inside postgres:
+
+    \dt
+    SELECT * FROM users;
+    \q
+
+
+5) Useful backend debugging commands
+------------------------------------
+If you need to restart only the backend container:
+
+    docker compose restart backend
+
+If you need to inspect logs:
+
+    docker compose logs -f backend
+
+If you want to inspect the worker logs:
+
+    docker compose logs -f worker
+
+If you need to enter the running backend container:
+
+    docker exec -it beadbuddy-backend bash
+
+
+6) Local Python-only development (optional)
+-------------------------------------------
+If you want to run the backend without Docker:
+
+    cd /media/alejandro/Coding/MyGits/FastAPI_BB-main/backend
+    python -m venv .venv
+    source .venv/bin/activate
+    pip install -r requirements.txt
+    uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+Then open:
+
+    http://localhost:8000/docs
+
+
+7) If the app is not starting
+-----------------------------
+Check containers:
+
+    docker ps -a
+
+Check logs:
+
+    docker compose logs
+
+If the frontend is not connecting to the backend, verify the .env values:
+
+    cat /media/alejandro/Coding/MyGits/FastAPI_BB-main/.env.example
+
+and ensure the frontend is using the correct API URL.
+
+
+8) Typical dev workflow
+----------------------
+1. Start Docker stack
+2. Open frontend at http://localhost:4173
+3. Register a user
+4. Login
+5. Upload an image
+6. Watch the job status in the backend logs or API responses
+7. Inspect generated image in backend/results
+
+
+Notes
+-----
+- The backend is configured to use environment variables instead of hardcoded local addresses.
+- Redis is required for Celery queues.
+- PostgreSQL is the recommended database for future modular deployment.
+- The app is intentionally modular so each service can later live on a different machine.

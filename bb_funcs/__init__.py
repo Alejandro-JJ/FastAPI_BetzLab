@@ -1,0 +1,1 @@
+# Functionalities initialization for BeadBuddy

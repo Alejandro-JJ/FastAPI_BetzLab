@@ -1,0 +1,59 @@
+Days 1, 2:
+- installed FastAPI, uvicorn through conda environment
+- created trhe first post in /uploads, which expects a file
+- install redis for message broker:
+	lightweight in-memory database to pass taks between fastapi and worker
+	by running
+	docker run -d --name redis-server -p 6379:6379 redis:alpine
+	starts in the background in port 6379
+- installed celery for running processes in the background
+- tasks.py will run tasks when called
+
+- app can be called with: 
+
+'''
+uvicorn main:app --reload
+'''
+and go to http://127.0.0.1:8000/docs
+The warning "404 not found" is normal, the frontpage does not exist yet
+
+- and in a separate terminal, celery must be running as awaiting worker:
+'''
+cd /media/alejandro/Coding/MyGits/BeadBuddy_Web/backend
+celery -A tasks.celery_app worker -l info
+'''
+celery hits a worker limit in executor, I need to use
+'''
+celery -A tasks.celery_app worker -l info -c 4
+'''
+
+
+- Test out the /run tab with a .json
+{
+  "file_id": "4feb2261-f599-45d1-9947-d857e060fe4c",
+  "params": {
+    "threshold": 0.7,
+    "min_size": 500
+  }
+}
+
+env_01.yml is working with Celery+Redis+FastAPI
+
+###############################
+Day 3: Database with SQLite + User Authentication
+We have three base tables (models): Users, Files and Jobs
+Each link to each other, so that one can do OOP, e.g. my_user.user.file
+They inherit a basic model from database.py
+For autentication we use FastAPIUsers, which can handle:
+
+-User registration
+-User login
+-Password hashing
+-JWT tokens (secure login tokens)
+
+Upon error "databaase is blocked", delete the current database in backend/database.db
+
+
+
+
+

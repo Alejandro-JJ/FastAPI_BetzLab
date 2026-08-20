@@ -1,0 +1,29 @@
+name: EnvBB
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.11.5
+  - ocl-icd-system
+  - pip
+  - pip:
+    - numpy
+    - scikit-image
+    - pyclesperanto-prototype
+    - termcolor
+    - colorcet
+    - scipy
+    - pyshtools
+    - sympy
+    - tqdm
+    - dill
+    - PyQt5
+    - fastapi
+    - uvicorn
+    - python-multipart
+    - celery==5.3.4
+    - redis==5.0.1
+    - kombu==5.3.4
+    - sqlalchemy
+    - pydantic
+    - python-dotenv

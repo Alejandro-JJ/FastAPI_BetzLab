@@ -1,56 +1,111 @@
+name: beadbuddy
+
 services:
   db:
     image: postgres:16-alpine
     container_name: beadbuddy-db
+    restart: unless-stopped
     environment:
       POSTGRES_DB: beadbuddy
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
+    # Not published to the host: containers reach it as `db` on the internal
+    # compose network. Publishing 5432 only invites other local services
+    # (monitoring agents, etc.) to probe it and log noisy auth failures.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d beadbuddy"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
 
-  redis:
-    image: redis:7-alpine
-    container_name: beadbuddy-redis
+  minio:
+    image: quay.io/minio/minio:latest
+    container_name: beadbuddy-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    volumes:
+      - minio_data:/data
     ports:
-      - "6379:6379"
+      - "9000:9000" # S3 API
+      - "9001:9001" # web console
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
 
   backend:
     build:
       context: ./backend
     container_name: beadbuddy-backend
+    restart: unless-stopped
     depends_on:
-      - db
-      - redis
+      db:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
     environment:
       DATABASE_URL: postgresql://postgres:postgres@db:5432/beadbuddy
-      REDIS_URL: redis://redis:6379/0
       CORS_ORIGINS: http://localhost:5173,http://localhost:4173
       JWT_SECRET_KEY: my-super-secret-key-for-jwt-tokens-12345
       ACCESS_TOKEN_EXPIRE_MINUTES: "30"
       UPLOAD_DIR: uploads
       RESULTS_DIR: results
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+      MINIO_BUCKET: beadbuddy
+      MINIO_SECURE: "false"
     volumes:
       - ./backend:/app
     ports:
       - "8000:8000"
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 
-  worker:
+  # The scheduler is the only service that starts tool worker containers, and
+  # only while a job is queued (see backend/scheduler/dispatcher.py). It needs
+  # the host's Docker socket to do so. On a real multi-machine deployment, run
+  # one scheduler per machine that should be able to execute jobs, all pointed
+  # at the same DATABASE_URL/MinIO endpoint.
+  scheduler:
     build:
       context: ./backend
-    container_name: beadbuddy-worker
+    container_name: beadbuddy-scheduler
+    restart: unless-stopped
     depends_on:
-      - db
-      - redis
+      db:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
     environment:
       DATABASE_URL: postgresql://postgres:postgres@db:5432/beadbuddy
-      REDIS_URL: redis://redis:6379/0
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+      MINIO_BUCKET: beadbuddy
+      MINIO_SECURE: "false"
+      SCHEDULER_DOCKER_NETWORK: beadbuddy_default
+      SCHEDULER_MAX_CONCURRENT_JOBS: "4"
     volumes:
       - ./backend:/app
-    command: celery -A tasks worker --loglevel=info
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: python -m scheduler.dispatcher
+
+  # Worker images below are built, never started by `docker compose up`
+  # (the "tools" profile is never active by default). The scheduler launches
+  # short-lived containers from these images on demand. Build them with:
+  #   docker compose --profile tools build
+  beadbuddy-worker:
+    profiles: ["tools"]
+    build:
+      context: ./backend
+      dockerfile: tools/beadbuddy/Dockerfile
+    image: beadbuddy-worker:latest
 
   frontend:
     build:
@@ -58,6 +113,7 @@ services:
       args:
         VITE_API_URL: http://localhost:8000
     container_name: beadbuddy-frontend
+    restart: unless-stopped
     depends_on:
       - backend
     ports:
@@ -67,3 +123,4 @@ services:
 
 volumes:
   postgres_data:
+  minio_data:

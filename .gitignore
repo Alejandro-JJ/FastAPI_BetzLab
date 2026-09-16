@@ -10,3 +10,16 @@ Plotters.py
 POST_2D_Deformation_Analysis.py
 StressTensor_tools.py
 backend/database.db
+
+# Python
+__pycache__/
+*.pyc
+
+# Generated local cache (source of truth is object storage)
+backend/uploads/
+backend/results/
+
+# Node
+node_modules/
+frontend/dist/
+frontend/node_modules/

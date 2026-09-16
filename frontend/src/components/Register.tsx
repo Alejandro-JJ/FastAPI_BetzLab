@@ -57,7 +57,7 @@ export const Register = ({ onRegisterSuccess, onLoginClick }: RegisterProps) => 
 
   // Render the UI (JSX = JavaScript XML)
   return (
-    <div style={styles.container}>
+    <div className="auth-card" style={styles.container}>
       <h1>Register</h1>
       
       {/* Error message display */}

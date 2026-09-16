@@ -87,11 +87,18 @@ export const uploadFile = async (file: File) => {
   return response.data;
 };
 
+// Tool registry: drives the dashboard cards and each tool's parameter form.
+export const getTools = async () => {
+  const response = await api.get('/tools');
+  return response.data;
+};
+
 // Image processing requests and job status polling.
 
-// Run segmentation with custom parameters
-export const runSegmentation = async (fileId: number, params: Record<string, number>) => {
-  const response = await api.post('/run', {
+// Queue a job for a given tool. The scheduler dispatches a worker container
+// for it; this call only creates the job record.
+export const runTool = async (toolId: string, fileId: number, params: Record<string, number>) => {
+  const response = await api.post(`/tools/${toolId}/run`, {
     file_id: fileId,
     params,
   });
@@ -101,6 +108,25 @@ export const runSegmentation = async (fileId: number, params: Record<string, num
 // Get job status
 export const getJobStatus = async (jobId: string) => {
   const response = await api.get(`/job/${jobId}`);
+  return response.data;
+};
+
+// Download the processed image and metadata as one ZIP archive.
+export const downloadJobResult = async (jobId: string) => {
+  const response = await api.get(`/job/${jobId}/download`, {
+    responseType: 'blob',
+  });
+  return response.data;
+};
+
+// Fetch one TIFF slice as a PNG for display in the browser.
+export const getSourceSlice = async (fileId: number, sliceIndex: number) => {
+  const response = await api.get(`/files/${fileId}/slice/${sliceIndex}`, { responseType: 'blob' });
+  return response.data;
+};
+
+export const getResultSlice = async (jobId: string, sliceIndex: number) => {
+  const response = await api.get(`/job/${jobId}/slice/${sliceIndex}`, { responseType: 'blob' });
   return response.data;
 };
 

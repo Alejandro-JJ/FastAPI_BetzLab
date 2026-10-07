@@ -1,0 +1,7 @@
+pyclesperanto-prototype
+pyshtools
+scipy
+sympy
+dill
+tqdm
+matplotlib

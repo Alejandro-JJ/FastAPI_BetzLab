@@ -22,3 +22,6 @@ class ToolResult:
     result_path: Path
     metadata: dict
     preview_path: Path | None = None
+    # "grayscale" (default) or "labels" - tells the API how to render result
+    # slices in the browser (labels get a glasbey-on-dark colormap).
+    render_mode: str = "grayscale"

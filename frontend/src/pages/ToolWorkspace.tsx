@@ -23,6 +23,7 @@ const buildDefaultParameters = (tool: Tool): Record<string, number> =>
   Object.fromEntries(tool.parameters.map((parameter) => [parameter.name, parameter.default]));
 
 const POLL_INTERVAL_MS = 1500;
+const SUMMARY_DISPLAY_MS = 8000;
 const TERMINAL_STATUSES = new Set(['completed', 'failed']);
 
 const ToolWorkspace = ({ tool, onBack }: ToolWorkspaceProps) => {
@@ -37,6 +38,7 @@ const ToolWorkspace = ({ tool, onBack }: ToolWorkspaceProps) => {
   const [downloadReady, setDownloadReady] = useState(false);
   const [sourceImageUrl, setSourceImageUrl] = useState<string | null>(null);
   const [resultImageUrl, setResultImageUrl] = useState<string | null>(null);
+  const [resultSummary, setResultSummary] = useState<Record<string, unknown> | null>(null);
   const [parameters, setParameters] = useState<Record<string, number>>(() => buildDefaultParameters(tool));
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -60,6 +62,11 @@ const ToolWorkspace = ({ tool, onBack }: ToolWorkspaceProps) => {
         setProcessing(false);
         setJobId(pollingJobId);
         setDownloadReady(true);
+
+        if (data.summary) {
+          setResultSummary(data.summary);
+          window.setTimeout(() => setResultSummary(null), SUMMARY_DISPLAY_MS);
+        }
 
         const resultBlob = await getResultSlice(pollingJobId, currentSlice);
         setResultImageUrl(URL.createObjectURL(resultBlob));
@@ -88,6 +95,7 @@ const ToolWorkspace = ({ tool, onBack }: ToolWorkspaceProps) => {
     setUploading(true);
     setStatusText('Uploading file...');
     setResultImageUrl(null);
+    setResultSummary(null);
     setJobId(null);
     setDownloadReady(false);
 
@@ -121,6 +129,7 @@ const ToolWorkspace = ({ tool, onBack }: ToolWorkspaceProps) => {
     setError('');
     setProcessing(true);
     setResultImageUrl(null);
+    setResultSummary(null);
     setStatusText('Analysis is running...');
 
     try {
@@ -267,6 +276,12 @@ const ToolWorkspace = ({ tool, onBack }: ToolWorkspaceProps) => {
       )}
 
       {error && <div style={{ backgroundColor: '#f8d7da', color: '#721c24', padding: '10px', borderRadius: '4px', marginBottom: '12px' }}>{error}</div>}
+      {resultSummary && (
+        <div style={{ backgroundColor: '#d1e7dd', color: '#0f5132', padding: '10px', borderRadius: '4px', marginBottom: '12px' }}>
+          {typeof resultSummary.beads_found === 'number' && <span>Beads found: {resultSummary.beads_found}. </span>}
+          {typeof resultSummary.duration_seconds === 'number' && <span>Segmentation time: {resultSummary.duration_seconds}s.</span>}
+        </div>
+      )}
       <p style={{ marginTop: '12px', color: '#333' }}>{statusText}</p>
     </div>
   );

@@ -103,8 +103,8 @@ services:
   beadbuddy-worker:
     profiles: ["tools"]
     build:
-      context: ./backend
-      dockerfile: tools/beadbuddy/Dockerfile
+      context: .
+      dockerfile: backend/tools/beadbuddy/Dockerfile
     image: beadbuddy-worker:latest
 
   frontend:

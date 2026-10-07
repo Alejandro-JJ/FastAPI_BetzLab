@@ -21,6 +21,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
+import colorcet as cc
 import numpy as np
 import tifffile
 from PIL import Image
@@ -79,7 +80,26 @@ def _accepted_extensions() -> set[str]:
     return extensions or {".tif", ".tiff"}
 
 
-def _stack_slice_response(file_path: Path, slice_index: int) -> Response:
+# Glasbey palette optimized for a dark/black background (colorcet.glasbey_dark),
+# used to render label images: background (label 0) stays black, every other
+# label gets a maximally-distinct color from this palette.
+_GLASBEY_DARK = [
+    tuple(int(hex_color.lstrip("#")[i : i + 2], 16) for i in (0, 2, 4))
+    for hex_color in cc.glasbey_dark
+]
+
+
+def _labels_to_rgb(label_slice: np.ndarray) -> np.ndarray:
+    """Color-code a label image: background (0) black, each label a distinct color."""
+    rgb = np.zeros((*label_slice.shape, 3), dtype=np.uint8)
+    for label in np.unique(label_slice):
+        if label == 0:
+            continue
+        rgb[label_slice == label] = _GLASBEY_DARK[int(label) % len(_GLASBEY_DARK)]
+    return rgb
+
+
+def _stack_slice_response(file_path: Path, slice_index: int, render_mode: str = "grayscale") -> Response:
     """Read one TIFF slice and return it as a browser-friendly PNG."""
     stack = tifffile.imread(file_path)
     if stack.ndim == 2:
@@ -88,6 +108,12 @@ def _stack_slice_response(file_path: Path, slice_index: int) -> Response:
         raise HTTPException(status_code=404, detail="Slice not found")
 
     image_slice = stack[slice_index]
+
+    if render_mode == "labels":
+        image_buffer = BytesIO()
+        Image.fromarray(_labels_to_rgb(image_slice), mode="RGB").save(image_buffer, format="PNG")
+        return Response(content=image_buffer.getvalue(), media_type="image/png")
+
     if image_slice.dtype != np.uint8:
         image_slice = image_slice.astype(np.float32)
         minimum = image_slice.min()
@@ -219,7 +245,7 @@ async def get_result_slice(
         raise HTTPException(status_code=404, detail="Result not found")
     cache_path = RESULTS_DIR / job_id / Path(db_job.result_object_key).name
     local_path = storage.ensure_local_copy(db_job.result_object_key, cache_path)
-    return _stack_slice_response(local_path, slice_index)
+    return _stack_slice_response(local_path, slice_index, render_mode=db_job.render_mode or "grayscale")
 
 
 @app.get("/job/{job_id}/download")
@@ -306,4 +332,5 @@ async def get_job_status(
         "job_id": job_id,
         "status": db_job.status,
         "error": db_job.error_message,
+        "summary": json.loads(db_job.result_summary) if db_job.result_summary else None,
     }

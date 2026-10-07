@@ -115,6 +115,22 @@ Build it with:
 docker compose --profile tools build mbr-analysis-worker
 ```
 
+If your processor needs code that lives outside `backend/` (e.g. the shared
+`bb_funcs/` scientific package, as BeadBuddy's does), the build context can't
+reach it - Docker refuses to `COPY` from outside the build context. Point the
+context at the repo root instead and prefix every `COPY` in the Dockerfile
+with `backend/` (see `backend/tools/beadbuddy/Dockerfile` for a worked
+example):
+
+```yaml
+mbr-analysis-worker:
+  profiles: ["tools"]
+  build:
+    context: .
+    dockerfile: backend/tools/mbr_analysis/Dockerfile
+  image: mbr-analysis-worker:latest
+```
+
 The `worker_image` value in step 1 must match the `image:` tag here exactly -
 that is how the scheduler knows which image to launch for this tool's jobs.
 

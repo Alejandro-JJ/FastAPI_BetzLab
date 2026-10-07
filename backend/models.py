@@ -53,6 +53,10 @@ class Job(Base):
     result_object_key = Column(String, nullable=True)
     metadata_object_key = Column(String, nullable=True)
     result_path = Column(String, nullable=True)
+    # How the frontend should render result slices: "grayscale" or "labels".
+    render_mode = Column(String, nullable=True)
+    # JSON dict of small, DB-friendly result facts (e.g. beads_found, duration_seconds).
+    result_summary = Column(Text, nullable=True)
     error_message = Column(Text, nullable=True)
     container_id = Column(String, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

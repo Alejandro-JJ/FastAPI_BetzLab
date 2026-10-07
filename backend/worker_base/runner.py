@@ -82,6 +82,8 @@ def main() -> int:
             status="completed",
             result_object_key=result_key,
             metadata_object_key=metadata_key,
+            render_mode=result.render_mode,
+            result_summary=json.dumps(result.metadata),
             finished_at=datetime.now(timezone.utc),
         )
         print(f"Job {job_id} completed: {result_key}")

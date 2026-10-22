@@ -1,0 +1,8 @@
+# TFM tool specific requirements
+matplotlib
+tqdm
+scipy
+scikit-image
+itk-elastix
+itk
+# streamlit-image-coordinates is Streamlit UI-only and not needed in workers.

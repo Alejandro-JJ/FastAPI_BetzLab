@@ -97,7 +97,7 @@ export const getTools = async () => {
 
 // Queue a job for a given tool. The scheduler dispatches a worker container
 // for it; this call only creates the job record.
-export const runTool = async (toolId: string, fileId: number, params: Record<string, number>) => {
+export const runTool = async (toolId: string, fileId: number, params: Record<string, unknown>) => {
   const response = await api.post(`/tools/${toolId}/run`, {
     file_id: fileId,
     params,
@@ -127,6 +127,53 @@ export const getSourceSlice = async (fileId: number, sliceIndex: number) => {
 
 export const getResultSlice = async (jobId: string, sliceIndex: number) => {
   const response = await api.get(`/job/${jobId}/slice/${sliceIndex}`, { responseType: 'blob' });
+  return response.data;
+};
+
+export interface VectorSliceResponse {
+  slice_index: number;
+  sampled_height: number;
+  sampled_width: number;
+  stride: number;
+  vector_dim: number;
+  u: number[][];
+  v: number[][];
+  magnitude: number[][];
+  unit: string;
+  scale_hint: number;
+}
+
+export const getResultVectorSlice = async (jobId: string, sliceIndex: number, stride = 6): Promise<VectorSliceResponse> => {
+  const response = await api.get(`/job/${jobId}/vector/${sliceIndex}`, {
+    params: { stride },
+  });
+  return response.data;
+};
+
+export const getJobArtifact = async (jobId: string, artifactName: string) => {
+  const response = await api.get(`/job/${jobId}/artifact/${artifactName}`, {
+    responseType: 'blob',
+  });
+  return response.data;
+};
+
+export const rerenderJobPlot = async (
+  jobId: string,
+  stage: 'displacement' | 'traction',
+  sliceIndex: number,
+  params: {
+    preview_mode: 'magnitude' | 'field' | 'both';
+    plot_colormap: 'jet' | 'viridis' | 'inferno' | 'turbo';
+    quiver_stride: number;
+    show_scale_bar: boolean;
+    plot_resolution_scale?: number;
+    plot_quiver_length_scale: number;
+    plot_quiver_size_scale: number;
+  },
+) => {
+  const response = await api.post(`/job/${jobId}/plot/${stage}/${sliceIndex}`, params, {
+    responseType: 'blob',
+  });
   return response.data;
 };
 

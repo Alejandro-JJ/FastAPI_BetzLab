@@ -1,0 +1,63 @@
+//ImageTypes
+(FixedInternalImagePixelType "float")
+(MovingInternalImagePixelType "float")
+(FixedImageDimension 3)
+(MovingImageDimension 3)
+(UseDirectionCosines "true")
+
+// **********Components
+(Registration "MultiResolutionRegistration")
+(FixedImagePyramid "FixedSmoothingImagePyramid")
+(MovingImagePyramid "MovingSmoothingImagePyramid")
+(Interpolator "BSplineInterpolator")
+(Metric "AdvancedMattesMutualInformation")
+(Optimizer "AdaptiveStochasticGradientDescent")
+(ResampleInterpolator "FinalBSplineInterpolator")
+(Resampler "DefaultResampler")
+(Transform "RecursiveBSplineTransform")
+
+// ********** Pyramid
+(NumberOfResolutions 3)
+(ImagePyramidSchedule 2 2 2  2 2 2  1 1 1)
+
+// ********** Transform
+(FinalGridSpacingInVoxels 12 12 4)
+(GridSpacingSchedule 4.0 4.0 4.0  2.0 2.0 2.0  1.0 1.0 1.0)
+(HowToCombineTransforms "Compose")
+
+// ********** Optimizer
+(MaximumNumberOfIterations 500 1000 2000)
+(AutomaticParameterEstimation "false")
+(SP_a 26964.7184719893848523 52769.6656105196670978 108519.2368182748905383)
+(SP_A 20.0000000000000000 20.0000000000000000 20.0000000000000000)
+(SP_alpha 1.0000000000000000 1.0000000000000000 1.0000000000000000)
+(SigmoidMax 1.0000000000000000 1.0000000000000000 1.0000000000000000)
+(SigmoidMin -0.4231283227960001 -0.7452063718201924 -0.9034455506236023)
+(SigmoidScale 0.0000002236236520 0.0000000981342555 0.0000000261231391)
+(UseAdaptiveStepSizes "true")
+
+// ********** Metric
+//default values
+(NumberOfHistogramBins 128)
+
+// ********** Several
+(DefaultOutputPrecision 16)
+(WriteTransformParametersEachIteration "false")
+(WriteTransformParametersEachResolution "true")
+(WriteResultImageAfterEachResolution "false")
+(WriteResultImage "false")
+(ShowExactMetricValue "false")
+(ErodeMask "false")
+
+// ********** ImageSampler
+(ImageSampler "RandomCoordinate")
+(NumberOfSpatialSamples 950 1899 3798)
+(NewSamplesEveryIteration "true")
+
+// ********** Interpolator and Resampler
+//Order of B-Spline interpolation used in each resolution level:
+(BSplineInterpolationOrder 1)
+//Order of B-Spline interpolation used for applying the final deformation:
+(FinalBSplineInterpolationOrder 3)
+//Default pixel value for pixels that come from outside the picture:
+(DefaultPixelValue 0)

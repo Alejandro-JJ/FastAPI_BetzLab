@@ -1,134 +1,186 @@
-# Starting the system locally (step by step)
+# Restarting The System For Testing
 
-Follow this top to bottom to get the whole stack running and process one
-real job end to end. Everything runs through Docker Compose - no local
-Python/Node install is required.
+This guide is the recommended restart flow now that multiple tools are
+available. It is safe to run repeatedly while developing and testing.
 
-Prerequisites: Docker and the Docker Compose plugin installed and running.
+Prerequisites: Docker Engine + Docker Compose plugin running.
 
-## 1. Start the core services
+## 1. Full restart (clean, repeatable)
 
 From the repository root:
 
 ```bash
-docker compose up --build
+docker compose down
+docker compose up --build -d
 ```
 
-This builds and starts:
+This restarts core services:
 
-- `db` - PostgreSQL (internal only - not published to the host)
-- `minio` - object storage, API on port 9000, web console on port 9001
-- `backend` - FastAPI, port 8000
-- `scheduler` - watches for queued jobs and dispatches worker containers
-- `frontend` - React app served on port 4173
+- `db` (PostgreSQL)
+- `minio` (object storage)
+- `backend` (FastAPI)
+- `scheduler` (job dispatcher)
+- `frontend` (UI)
 
-Wait until you see the backend log `Uvicorn running on http://0.0.0.0:8000`.
-Leave this terminal running; open a new terminal for the next steps.
-
-## 2. Build the BeadBuddy worker image
-
-The scheduler only starts containers from images that already exist, so
-build the one enabled tool's worker image once:
+Check service health:
 
 ```bash
-docker compose --profile tools build beadbuddy-worker
+docker compose ps
+docker compose logs --tail=80 backend scheduler
 ```
 
-This produces the `beadbuddy-worker:latest` image referenced by
-`backend/tool_registry.py`. Repeat this command any time you change
-`backend/tools/beadbuddy/processor.py`.
+Backend is ready when logs show Uvicorn started on port `8000`.
 
-## 3. Open the app
+## 2. Rebuild worker images for enabled tools
+
+Workers are not started by `docker compose up`; they are launched on-demand by
+the scheduler. Build all worker images used for tests:
+
+```bash
+docker compose --profile tools build beadbuddy-worker traction-force-worker
+```
+
+Verify images exist:
+
+```bash
+docker images | grep -E "beadbuddy-worker|traction-force-worker"
+```
+
+Re-run this build command whenever you modify code under:
+
+- `backend/tools/beadbuddy/`
+- `backend/tools/traction_force/`
+- `backend/worker_base/`
+
+## 3. Open test endpoints
 
 - Frontend: http://localhost:4173
-- API docs (Swagger UI): http://localhost:8000/docs
-- MinIO console: http://localhost:9001 (login `minioadmin` / `minioadmin`)
+- API docs: http://localhost:8000/docs
+- MinIO console: http://localhost:9001
 
-## 4. Create an account and log in
+MinIO credentials:
 
-In the frontend at http://localhost:4173:
+- User: `minioadmin`
+- Password: `minioadmin`
 
-1. Click through to Register, create any email/password.
-2. Log in with those credentials.
-3. You land on the tool dashboard. "BeadBuddy" should be enabled; the other
-   three tools show "Coming soon" (expected - they have no worker image yet).
+## 4. Functional testing checklist
 
-## 5. Get a test TIFF stack
+1. Log in from the frontend.
+2. Confirm tools appear in dashboard.
+3. Run one BeadBuddy job (`.tif` upload -> process -> download ZIP).
+4. Run one Traction Force job (upload Before + After -> process -> download ZIP).
+5. Confirm each job reaches `completed` and produces result + metadata.
 
-Use any multi-page `.tif`/`.tiff` file you have. 
-
-## 6. Run a job through the UI
-
-1. Open "BeadBuddy" from the dashboard.
-2. Click **Upload** and pick your `.tif` file.
-3. Once uploaded, the source slice appears and the slice slider is enabled.
-4. Click **Process**. The status text will cycle through
-   `queued -> dispatching -> running -> completed`.
-5. When it says "Processing finished. Result ready.", the processed panel
-   shows the output and **Download** becomes enabled.
-6. Click **Download** to get a ZIP with the result TIFF and its metadata
-   JSON.
-
-## 7. Watch it happen at the infrastructure level (optional but useful)
-
-In another terminal, while a job is running:
-
-```bash
-docker ps --filter "name=job-"
-```
-
-You should briefly see a container named `job-<job-id>` appear and then
-disappear on its own (`remove=True` in `scheduler/dispatcher.py`) - this is
-the temporary worker container that processed exactly one job.
-
-Scheduler logs:
+Optional scheduler visibility during tests:
 
 ```bash
 docker compose logs -f scheduler
 ```
 
-You'll see lines like:
+You should see dispatch lines like:
 
-```
+```text
 Dispatching job <id> (beadbuddy) -> beadbuddy-worker:latest
+Dispatching job <id> (traction_force) -> traction-force-worker:latest
 ```
 
-Object storage contents (uploads and results) are visible in the MinIO
-console at http://localhost:9001, inside the `beadbuddy` bucket, under
-`uploads/` and `results/`.
+## 5. Fast restart during iterative development
 
-## 8. Stopping everything
+Use this when you changed only API/frontend/scheduler compose services (not worker images):
 
 ```bash
-docker compose down
+docker compose up --build -d backend scheduler frontend
 ```
 
-Add `-v` to also delete the Postgres and MinIO volumes (all users, jobs, and
-files):
+If worker code changed, also rebuild workers:
+
+```bash
+docker compose --profile tools build beadbuddy-worker traction-force-worker
+```
+
+## 6. Hard reset (wipe test data)
+
+If you want a completely clean test environment (users, uploads, jobs, results):
 
 ```bash
 docker compose down -v
+docker compose up --build -d
+docker compose --profile tools build beadbuddy-worker traction-force-worker
 ```
+
+## 7. MinIO space cleanup (maintainer runbook)
+
+Use this when uploads fail with storage errors such as `XMinioStorageFull` or
+`Upload failed: object storage is full`.
+
+### 7.1 Check current disk usage
+
+From repository root:
+
+```bash
+df -h /
+docker system df
+docker compose exec minio sh -lc "df -h /data && du -sh /data/* 2>/dev/null | sort -h | tail -n 30"
+```
+
+Notes:
+
+- MinIO stores objects in Docker volume `beadbuddy_minio_data` mounted at `/data` in the container.
+- If host `/` is near 100%, MinIO can still reject uploads even after deleting objects.
+
+### 7.2 Clear only MinIO objects (keep Postgres users/jobs)
+
+```bash
+docker compose stop backend scheduler
+docker compose exec minio sh -lc "rm -rf /data/*"
+rm -rf backend/uploads/* backend/results/*
+docker compose start minio backend scheduler
+```
+
+### 7.3 Free host Docker disk space (if host is still full)
+
+```bash
+docker builder prune -af
+docker image prune -af
+```
+
+Then verify free space again:
+
+```bash
+df -h /
+docker compose exec minio sh -lc "df -h /data"
+```
+
+### 7.4 Rebuild worker images if they were pruned
+
+```bash
+docker compose --profile tools build beadbuddy-worker traction-force-worker
+```
+
+### 7.5 Full destructive reset (wipe DB + MinIO)
+
+```bash
+docker compose down -v
+docker compose up --build -d
+docker compose --profile tools build beadbuddy-worker traction-force-worker
+```
+
+This is the fastest way to return to a clean test environment.
 
 ## Troubleshooting
 
-- **Dashboard shows no tools / an error loading tools** - the backend isn't
-  reachable yet; check `docker compose logs backend`.
-- **Job stays in `queued` forever** - the scheduler can't find the worker
-  image. Confirm step 2 ran successfully:
-  `docker images | grep beadbuddy-worker`.
-- **Job goes to `failed` immediately** - check
-  `docker compose logs scheduler` for the error message recorded on the job,
-  or query it directly: `GET /job/{job_id}` in the Swagger UI at `/docs`.
-- **`docker: permission denied` from the scheduler** - the scheduler
-  container needs access to `/var/run/docker.sock`; on Linux this usually
-  means your user needs to be in the `docker` group, or you're running
-  rootless Docker with a different socket path (adjust the volume mount in
-  `docker-compose.yml` accordingly).
+- Jobs stay `queued`: worker image missing. Rebuild with `--profile tools build`.
+- Job fails with `pull access denied` / `image not found` for `traction-force-worker` or `beadbuddy-worker`: worker images were removed locally (often after `docker image prune`). Rebuild with:
 
-## Next step
+```bash
+docker compose --profile tools build beadbuddy-worker traction-force-worker
+```
+- Job fails quickly: inspect `docker compose logs scheduler` and job status at `/job/{job_id}`.
+- UI cannot load tools: check `docker compose logs backend`.
+- Scheduler Docker permission errors: ensure `/var/run/docker.sock` is accessible to Docker and scheduler.
 
-To add a new analysis tool instead of just running BeadBuddy, see
-[ADDING_A_NEW_TOOL.md](ADDING_A_NEW_TOOL.md) or, if you already have a
-plain `analysis(image, params) -> image` function,
-[INTEGRATING_AN_EXISTING_FUNCTION.md](INTEGRATING_AN_EXISTING_FUNCTION.md).
+## Related docs
+
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+- [docs/ADDING_A_NEW_TOOL.md](docs/ADDING_A_NEW_TOOL.md)
+- [docs/INTEGRATING_AN_EXISTING_FUNCTION.md](docs/INTEGRATING_AN_EXISTING_FUNCTION.md)

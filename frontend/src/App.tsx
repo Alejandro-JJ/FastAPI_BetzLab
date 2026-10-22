@@ -8,6 +8,7 @@ import Login from './components/Login';
 import Register from './components/Register';
 import ToolDashboard from './pages/ToolDashboard';
 import ToolWorkspace from './pages/ToolWorkspace';
+import TractionForceWorkspace from './pages/TractionForceWorkspace';
 import type { Tool } from './types/tool';
 import labLogo from './assets/LabLogo_cropped.png';
 
@@ -62,8 +63,12 @@ function App() {
         <ToolDashboard onOpenTool={handleOpenTool} onLogout={handleLogout} />
       )}
 
-      {currentView === 'tool' && activeTool && (
+      {currentView === 'tool' && activeTool && activeTool.id !== 'traction_force' && (
         <ToolWorkspace tool={activeTool} onBack={() => setCurrentView('dashboard')} />
+      )}
+
+      {currentView === 'tool' && activeTool?.id === 'traction_force' && (
+        <TractionForceWorkspace tool={activeTool} onBack={() => setCurrentView('dashboard')} />
       )}
     </div>
   );

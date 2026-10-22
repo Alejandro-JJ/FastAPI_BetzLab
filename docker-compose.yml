@@ -107,6 +107,13 @@ services:
       dockerfile: backend/tools/beadbuddy/Dockerfile
     image: beadbuddy-worker:latest
 
+  traction-force-worker:
+    profiles: ["tools"]
+    build:
+      context: .
+      dockerfile: backend/tools/traction_force/Dockerfile
+    image: traction-force-worker:latest
+
   frontend:
     build:
       context: ./frontend

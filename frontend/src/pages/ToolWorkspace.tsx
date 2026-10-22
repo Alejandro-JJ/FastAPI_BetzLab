@@ -169,120 +169,130 @@ const ToolWorkspace = ({ tool, onBack }: ToolWorkspaceProps) => {
   };
 
   return (
-    <div style={{ maxWidth: '1100px', margin: '0 auto', textAlign: 'center' }}>
+    <div style={{ maxWidth: 'calc(100vw - 28px)', margin: '0 auto', textAlign: 'center' }}>
       <h2>{tool.name}</h2>
       <p>Upload a file, configure the analysis, and process it.</p>
       <button className="back-to-tools" onClick={onBack} type="button">
         Back to tools
       </button>
 
-      <div className="workspace-panels" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: '24px', margin: '30px 0', textAlign: 'left' }}>
-        <section className="workspace-image-panel" style={{ padding: '20px', border: '1px solid #ddd', borderRadius: '8px', backgroundColor: '#fff' }}>
-          <h3>Original file</h3>
-          <div className="workspace-image-stage" style={{ display: 'grid', placeItems: 'center', borderRadius: '8px', overflow: 'hidden' }}>
-            {sourceImageUrl ? <img className="workspace-image" src={sourceImageUrl} alt="Uploaded source" /> : <span style={{ color: '#aaa' }}>Your uploaded file will appear here</span>}
-          </div>
-        </section>
-
-        <section className="workspace-image-panel" style={{ padding: '20px', border: '1px solid #ddd', borderRadius: '8px', backgroundColor: '#fff' }}>
-          <h3>Processed result</h3>
-          <div className="workspace-image-stage" style={{ display: 'grid', placeItems: 'center', borderRadius: '8px', overflow: 'hidden' }}>
-            {processing && <div aria-label="Processing" style={{ width: '48px', height: '48px', border: '5px solid #777', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />}
-            {!processing && resultImageUrl && <img className="workspace-image" src={resultImageUrl} alt="Processed output" />}
-            {!processing && !resultImageUrl && <span style={{ color: '#aaa' }}>Your result will appear here</span>}
-          </div>
-        </section>
-      </div>
-
-      <div className="slice-controls">
-        <label htmlFor="slice-slider">Slice {currentSlice + 1} of {sliceCount}</label>
-        <input
-          id="slice-slider"
-          type="range"
-          min="0"
-          max={Math.max(0, sliceCount - 1)}
-          value={currentSlice}
-          onChange={(event) => void handleSliceChange(event)}
-          disabled={fileId === null || uploading}
-        />
-      </div>
-
-      <section className="workspace-controls" style={{ margin: '30px 0', padding: '20px', border: '1px solid #ddd', borderRadius: '8px', backgroundColor: '#fff', textAlign: 'left' }}>
-        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '12px' }}>
-          <input
-            id="upload-input"
-            ref={fileInputRef}
-            type="file"
-            accept={tool.accepted_extensions.join(',')}
-            hidden
-            onChange={(event) => {
-              const file = event.target.files?.[0] || null;
-              setFileId(null);
-              setSourceImageUrl(null);
-              setResultImageUrl(null);
-              setDownloadReady(false);
-              if (file) {
-                void uploadSelectedFile(file);
-              }
-            }}
-          />
-          <button
-            onClick={handleUpload}
-            disabled={uploading}
-            style={{ width: '150px', padding: '12px 24px', fontSize: '16px', backgroundColor: uploading ? '#6c757d' : '#007bff', color: 'white', border: 'none', borderRadius: '4px', cursor: uploading ? 'not-allowed' : 'pointer' }}
-          >
-            {uploading ? 'Uploading...' : 'Upload'}
-          </button>
-          <button
-            onClick={handleProcess}
-            disabled={fileId === null || processing}
-            style={{ width: '150px', padding: '12px 28px', fontSize: '16px', backgroundColor: fileId !== null && !processing ? '#198754' : '#6c757d', color: '#fff', border: 'none', borderRadius: '4px', cursor: fileId !== null && !processing ? 'pointer' : 'not-allowed' }}
-          >
-            {processing ? 'Processing...' : 'Process'}
-          </button>
-          <button
-            onClick={handleDownload}
-            disabled={!downloadReady}
-            style={{ width: '180px', padding: '12px 20px', fontSize: '16px', backgroundColor: downloadReady ? '#0d6efd' : '#6c757d', color: '#fff', border: 'none', borderRadius: '4px', cursor: downloadReady ? 'pointer' : 'not-allowed' }}
-          >
-            Download
-          </button>
-        </div>
-      </section>
-
-      {tool.parameters.length > 0 && (
-        <section style={{ margin: '30px 0', padding: '20px', border: '1px solid #ddd', borderRadius: '8px', backgroundColor: '#fff', textAlign: 'left' }}>
-          <h3>Analysis parameters</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px' }}>
-            {tool.parameters.map((parameter) => (
-              <label key={parameter.name} style={{ display: 'grid', gap: '6px', fontWeight: 600 }}>
-                {parameter.label}
-                <input
-                  type="number"
-                  value={parameters[parameter.name]}
-                  min={parameter.minimum ?? undefined}
-                  max={parameter.maximum ?? undefined}
-                  step={parameter.step}
-                  onChange={(event) =>
-                    setParameters((current) => ({ ...current, [parameter.name]: Number(event.target.value) }))
+      <div className="workspace-layout" style={{ marginTop: '20px' }}>
+        <aside className="workspace-sidebar">
+          <section className="workspace-controls" style={{ margin: '0 0 16px', padding: '20px', border: '1px solid #ddd', borderRadius: '8px', backgroundColor: '#fff', textAlign: 'left' }}>
+            <h3>Run controls</h3>
+            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '12px' }}>
+              <input
+                id="upload-input"
+                ref={fileInputRef}
+                type="file"
+                accept={tool.accepted_extensions.join(',')}
+                hidden
+                onChange={(event) => {
+                  const file = event.target.files?.[0] || null;
+                  setFileId(null);
+                  setSourceImageUrl(null);
+                  setResultImageUrl(null);
+                  setDownloadReady(false);
+                  if (file) {
+                    void uploadSelectedFile(file);
                   }
-                  disabled={processing}
-                  style={{ padding: '10px', border: '1px solid #ccc', borderRadius: '4px' }}
-                />
-              </label>
-            ))}
-          </div>
-        </section>
-      )}
+                }}
+              />
+              <button
+                onClick={handleUpload}
+                disabled={uploading}
+                style={{ width: '150px', padding: '12px 24px', fontSize: '16px', backgroundColor: uploading ? '#6c757d' : '#007bff', color: 'white', border: 'none', borderRadius: '4px', cursor: uploading ? 'not-allowed' : 'pointer' }}
+              >
+                {uploading ? 'Uploading...' : 'Upload'}
+              </button>
+              <button
+                onClick={handleProcess}
+                disabled={fileId === null || processing}
+                style={{ width: '150px', padding: '12px 28px', fontSize: '16px', backgroundColor: fileId !== null && !processing ? '#198754' : '#6c757d', color: '#fff', border: 'none', borderRadius: '4px', cursor: fileId !== null && !processing ? 'pointer' : 'not-allowed' }}
+              >
+                {processing ? 'Processing...' : 'Process'}
+              </button>
+              <button
+                onClick={handleDownload}
+                disabled={!downloadReady}
+                style={{ width: '180px', padding: '12px 20px', fontSize: '16px', backgroundColor: downloadReady ? '#0d6efd' : '#6c757d', color: '#fff', border: 'none', borderRadius: '4px', cursor: downloadReady ? 'pointer' : 'not-allowed' }}
+              >
+                Download
+              </button>
+            </div>
+          </section>
 
-      {error && <div style={{ backgroundColor: '#f8d7da', color: '#721c24', padding: '10px', borderRadius: '4px', marginBottom: '12px' }}>{error}</div>}
-      {resultSummary && (
-        <div style={{ backgroundColor: '#d1e7dd', color: '#0f5132', padding: '10px', borderRadius: '4px', marginBottom: '12px' }}>
-          {typeof resultSummary.beads_found === 'number' && <span>Beads found: {resultSummary.beads_found}. </span>}
-          {typeof resultSummary.duration_seconds === 'number' && <span>Segmentation time: {resultSummary.duration_seconds}s.</span>}
-        </div>
-      )}
-      <p style={{ marginTop: '12px', color: '#333' }}>{statusText}</p>
+          {tool.parameters.length > 0 && (
+            <section style={{ margin: '0 0 16px', padding: '20px', border: '1px solid #ddd', borderRadius: '8px', backgroundColor: '#fff', textAlign: 'left' }}>
+              <h3>Analysis parameters</h3>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px' }}>
+                {tool.parameters.map((parameter) => (
+                  <label key={parameter.name} style={{ display: 'grid', gap: '6px', fontWeight: 600 }}>
+                    {parameter.label}
+                    <input
+                      type="number"
+                      value={parameters[parameter.name]}
+                      min={parameter.minimum ?? undefined}
+                      max={parameter.maximum ?? undefined}
+                      step={parameter.step}
+                      onChange={(event) =>
+                        setParameters((current) => ({ ...current, [parameter.name]: Number(event.target.value) }))
+                      }
+                      disabled={processing}
+                      style={{ padding: '10px', border: '1px solid #ccc', borderRadius: '4px' }}
+                    />
+                  </label>
+                ))}
+              </div>
+            </section>
+          )}
+        </aside>
+
+        <section className="workspace-viewport">
+          <div className="workspace-panels" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: '24px', textAlign: 'left' }}>
+            <section className="workspace-image-panel" style={{ padding: '20px', border: '1px solid #ddd', borderRadius: '8px', backgroundColor: '#fff' }}>
+              <h3>Original file</h3>
+              <div className="workspace-image-stage" style={{ display: 'grid', placeItems: 'center', borderRadius: '8px', overflow: 'hidden' }}>
+                {sourceImageUrl ? <img className="workspace-image" src={sourceImageUrl} alt="Uploaded source" /> : <span style={{ color: '#aaa' }}>Your uploaded file will appear here</span>}
+              </div>
+            </section>
+
+            <section className="workspace-image-panel" style={{ padding: '20px', border: '1px solid #ddd', borderRadius: '8px', backgroundColor: '#fff' }}>
+              <h3>Processed result</h3>
+              <div className="workspace-image-stage" style={{ display: 'grid', placeItems: 'center', borderRadius: '8px', overflow: 'hidden' }}>
+                {processing && <div aria-label="Processing" style={{ width: '48px', height: '48px', border: '5px solid #777', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />}
+                {!processing && resultImageUrl && <img className="workspace-image" src={resultImageUrl} alt="Processed output" />}
+                {!processing && !resultImageUrl && <span style={{ color: '#aaa' }}>Your result will appear here</span>}
+              </div>
+            </section>
+          </div>
+
+          <div className="slice-controls">
+            <label htmlFor="slice-slider">Slice {currentSlice + 1} of {sliceCount}</label>
+            <input
+              id="slice-slider"
+              type="range"
+              min="0"
+              max={Math.max(0, sliceCount - 1)}
+              value={currentSlice}
+              onChange={(event) => void handleSliceChange(event)}
+              disabled={fileId === null || uploading}
+            />
+          </div>
+
+          <section style={{ padding: '20px', border: '1px solid #ddd', borderRadius: '8px', backgroundColor: '#fff', textAlign: 'left' }}>
+            <h3>Processing status</h3>
+            {error && <div style={{ backgroundColor: '#f8d7da', color: '#721c24', padding: '10px', borderRadius: '4px', marginBottom: '12px' }}>{error}</div>}
+            {resultSummary && (
+              <div style={{ backgroundColor: '#d1e7dd', color: '#0f5132', padding: '10px', borderRadius: '4px', marginBottom: '12px' }}>
+                {typeof resultSummary.beads_found === 'number' && <span>Beads found: {resultSummary.beads_found}. </span>}
+                {typeof resultSummary.duration_seconds === 'number' && <span>Segmentation time: {resultSummary.duration_seconds}s.</span>}
+              </div>
+            )}
+            <p style={{ marginTop: '12px', color: '#333' }}>{statusText}</p>
+          </section>
+        </section>
+      </div>
     </div>
   );
 };

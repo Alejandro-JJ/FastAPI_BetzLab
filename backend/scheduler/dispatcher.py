@@ -123,6 +123,13 @@ def _dispatch(job: Job) -> None:
             remove=True,
             name=f"job-{job.id}",
         )
+    except docker.errors.ImageNotFound:
+        _mark_failed(
+            job.id,
+            "Worker image is missing locally. Rebuild with: "
+            "docker compose --profile tools build beadbuddy-worker traction-force-worker",
+        )
+        return
     except docker.errors.APIError as error:
         _mark_failed(job.id, f"Failed to start worker container: {error}")
         return

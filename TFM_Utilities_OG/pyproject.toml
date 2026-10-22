@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools", "setuptools-scm>=8.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "traction_force"
+version = "0.0.3"
+dependencies = [
+  "numpy >= 1.26.4",
+  "scipy >= 1.13.1",
+  "itk-elastix >= 0.21.0",
+  "scikit-image >= 0.24.0",
+  "itk >= 5.4.0",
+  "matplotlib >= 3.10.0",
+]
+authors = [
+  { name = "Bastia Malte Winter", email = "b.winter01@stud.uni-goettingen.de" },
+]
+description = "Functions for traction force microscopy"
+readme = "README.md"
+license = { text = "MIT License" }
+requires-python = ">=3.12.4"
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+]
+
+[project.urls]
+Repository = "https://gitlab.gwdg.de/betzlab/traction-force-microscopy/traction-force-utilities.git"
+
+
+# build configuration
+[tool.setuptools.packages.find]
+where = ["SRC"]

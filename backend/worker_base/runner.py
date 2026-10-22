@@ -72,6 +72,17 @@ def main() -> int:
         result_key = f"{result_prefix}{result.result_path.name}"
         storage.upload_path(result.result_path, result_key)
 
+        artifact_object_keys: dict[str, str] = {}
+        if result.artifacts:
+            for artifact_name, artifact_path in result.artifacts.items():
+                artifact_key = f"{result_prefix}{artifact_path.name}"
+                storage.upload_path(artifact_path, artifact_key)
+                artifact_object_keys[str(artifact_name)] = artifact_key
+
+        if artifact_object_keys:
+            result.metadata = dict(result.metadata)
+            result.metadata["artifact_object_keys"] = artifact_object_keys
+
         metadata_path = WORKDIR / f"{result.result_path.stem}_metadata.json"
         metadata_path.write_text(json.dumps(result.metadata, indent=2), encoding="utf-8")
         metadata_key = f"{result_prefix}{metadata_path.name}"

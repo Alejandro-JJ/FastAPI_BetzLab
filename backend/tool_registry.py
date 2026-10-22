@@ -66,9 +66,21 @@ TOOLS: tuple[Tool, ...] = (
     Tool(
         id="traction_force",
         name="Traction Force Microscopy",
-        description="Coming soon.",
+        description="Traction force microscopy analysis tool.",
         order=3,
-        enabled=False,
+        enabled=True,
+        worker_image="traction-force-worker:latest",
+        parameters=(
+            ToolParameter("half_window_size", "Half Window Size", 10, 4, 128, 1),
+            ToolParameter("step_size", "Step Size", 10, 1, 128, 1),
+            ToolParameter("mue2pix", "Micrometer to Pixel Ratio", 0.0772, 0.0001, 1.0, 0.0001),
+            ToolParameter("E", "Young's Modulus (Pa)", 1200, 100, 5000, 1),
+            ToolParameter("nu", "Poisson's Ratio", 0.49, 0.1, 0.9, 0.01),
+            ToolParameter("alpha0", "Initial Alpha Value", 1e-15, 1e-20, 1e-10, 1e-15),
+            ToolParameter("h", "Gel Height (μm)", 60, 10, 200, 1),
+            ToolParameter("z", "Image Height (μm)", 60, 10, 200, 1),
+            ToolParameter("d", "Dimensions of Image Stacks", 2, 1, 5, 1),
+        ),
     ),
     Tool(
         id="segmentation_3d",

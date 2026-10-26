@@ -15,6 +15,7 @@ from pathlib import Path
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+from matplotlib.ticker import ScalarFormatter
 import numpy as np
 import tifffile
 from skimage.registration import optical_flow_ilk, phase_cross_correlation
@@ -194,8 +195,10 @@ def _save_matplotlib_plot(
     resolution_scale: float,
     quiver_length_scale: float,
     quiver_size_scale: float,
+    value_scale: float = 1.0,
+    colorbar_label: str | None = None,
 ) -> None:
-    magnitude = _field_magnitude(field)
+    magnitude = _field_magnitude(field) * max(0.0, float(value_scale))
     if magnitude.ndim != 2:
         raise ValueError("Expected 2D magnitude for matplotlib preview")
 
@@ -240,7 +243,7 @@ def _save_matplotlib_plot(
         yy, xx = np.mgrid[0:height:stride, 0:width:stride]
         uu = u[::stride, ::stride]
         vv = v[::stride, ::stride]
-        magnitude_uv = np.sqrt(np.square(uu) + np.square(vv))
+        magnitude_uv = np.sqrt(np.square(uu) + np.square(vv)) * max(0.0, float(value_scale))
         max_magnitude = float(np.max(magnitude_uv)) if magnitude_uv.size > 0 else 0.0
         if mode == "both":
             color = "white"
@@ -280,9 +283,15 @@ def _save_matplotlib_plot(
             axes.quiver(xx, yy, uu, vv, c_values, cmap=colormap, **quiver_kwargs)
 
     if colorbar_enabled and cbar_axes is not None:
-        colorbar = figure.colorbar(image, cax=cbar_axes, orientation="vertical")
+        # Plain tick labels while values are readable; switch to scientific
+        # notation (powers of ten) outside 1e-2..1e3 so Pa values stay legible.
+        tick_formatter = ScalarFormatter(useMathText=True)
+        tick_formatter.set_powerlimits((-2, 3))
+        colorbar = figure.colorbar(image, cax=cbar_axes, orientation="vertical", format=tick_formatter)
         colorbar.outline.set_linewidth(0.8)
         colorbar.ax.tick_params(labelsize=7, length=2, width=0.8)
+        if colorbar_label:
+            colorbar.set_label(colorbar_label, fontsize=8)
 
     if show_scale_bar and micrometers_per_vector_pixel > 0:
         target_um = 10.0
@@ -291,7 +300,7 @@ def _save_matplotlib_plot(
         x0 = int(width * 0.05)
         y0 = int(height * 0.08)
         axes.plot([x0, x0 + length_px], [y0, y0], color="white", linewidth=2.0, solid_capstyle="butt")
-        axes.text(x0, y0 + max(3, int(height * 0.018)), f"{label_um:.1f} um", color="white", fontsize=7, ha="left", va="bottom")
+        axes.text(x0, y0 + max(3, int(height * 0.018)), f"{label_um:.1f} µm", color="white", fontsize=7, ha="left", va="bottom")
 
     figure.savefig(output_path, dpi=dpi, facecolor="white", edgecolor="white")
     plt.close(figure)
@@ -489,7 +498,13 @@ def process(input_path: Path, context: ToolContext) -> ToolResult:
 
     matplotlib_artifacts: dict[str, Path] = {}
 
-    def _render_stage_plots(stage_name: str, fields: list[np.ndarray], um_per_pixel: float) -> None:
+    def _render_stage_plots(
+        stage_name: str,
+        fields: list[np.ndarray],
+        um_per_pixel: float,
+        value_scale: float,
+        colorbar_label: str,
+    ) -> None:
         for slice_index, field in enumerate(fields):
             plot_path = context.workdir / f"tfm_plot_{stage_name}_{input_path.stem}_slice_{slice_index:04d}.png"
             _save_matplotlib_plot(
@@ -504,16 +519,32 @@ def process(input_path: Path, context: ToolContext) -> ToolResult:
                 resolution_scale=plot_resolution_scale,
                 quiver_length_scale=plot_quiver_length_scale,
                 quiver_size_scale=plot_quiver_size_scale,
+                value_scale=value_scale,
+                colorbar_label=colorbar_label,
             )
             matplotlib_artifacts[f"matplotlib_{stage_name}_slice_{slice_index:04d}"] = plot_path
             if slice_index == 0:
                 matplotlib_artifacts[f"matplotlib_{stage_name}_plot"] = plot_path
 
+    # Displacement is plotted in micrometers (raw fields are in pixels,
+    # exactly like the Streamlit tool's `dis * mue2pix`); traction in Pascals.
     if displacement_fields:
-        _render_stage_plots("displacement", displacement_fields, micrometers_per_vector_pixel)
+        _render_stage_plots(
+            "displacement",
+            displacement_fields,
+            micrometers_per_vector_pixel,
+            value_scale=mue2pix,
+            colorbar_label="µm",
+        )
 
     if traction_fields:
-        _render_stage_plots("traction", traction_fields, micrometers_per_vector_pixel)
+        _render_stage_plots(
+            "traction",
+            traction_fields,
+            micrometers_per_vector_pixel,
+            value_scale=1.0,
+            colorbar_label="Pa",
+        )
 
     generic_stage = "traction" if run_traction and traction_fields else "displacement"
     if f"matplotlib_{generic_stage}_plot" in matplotlib_artifacts:
